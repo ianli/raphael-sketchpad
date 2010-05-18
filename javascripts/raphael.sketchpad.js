@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.1
+ * Version 0.2
  * Copyright (c) 2010 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
@@ -26,7 +26,7 @@
 		return new SketchPad(paper, options);
 	}
 	
-	Raphael.sketchpad.VERSION = 0.1;
+	Raphael.sketchpad.VERSION = 0.2;
 	
 	/**
 	 * The Sketchpad object.
@@ -48,6 +48,7 @@
 		// The Raphael SVG canvas.
 		var _canvas = _paper.canvas;
 
+		// The HTML element that contains the canvas.
 		var _container = $(_canvas).parent();
 		
 		// The input to store SVG data.
@@ -251,48 +252,73 @@
 			}
 		};
 		
-		// If input is valid, then sketchpad is for input--listen to events.
-		if ($(_input).length > 0) {
-			// Cursor is crosshair, so it looks like we can do something.
-			$(_container).attr("style", "cursor:crosshair");
-			
-			$(_container).mousedown(_mousedown);
-			$(_container).mousemove(_mousemove);
-			$(_container).mouseup(_mouseup);
-
-			// Handle the case when the mouse is released outside the canvas.
-			$(document).mouseup(_mouseup);
-			
-			// $(document).mouseup(function(e) {
-			// 	_pen.stop();
-			// });
-		}
-		
-		// iPhone Events
-		//----------------
-		
-		_container.ontouchstart = function(e) {
+		function _touchstart(e) {
+			e = e.originalEvent;
 			e.preventDefault();
 
 			if (e.touches.length == 1) {
 				var touch = e.touches[0];
 				_mousedown(touch);
 			}
-		};
+		}
 		
-		_container.ontouchmove = function(e) {
+		function _touchmove(e) {
+			e = e.originalEvent;
 			e.preventDefault();
 
 			if (e.touches.length == 1) {
 				var touch = e.touches[0];
 				_mousemove(touch);
 			}
-		};
-		_container.ontouchend = function(e) {
+		}
+		
+		function _touchend(e) {
+			e = e.originalEvent;
 			e.preventDefault();
 
-			_pen.stop();
-		};
+			_mouseup(e);
+		}
+		
+		
+		self.editing = function(mode) {
+			if (mode) {
+				// Cursor is crosshair, so it looks like we can do something.
+				$(_container).attr("style", "cursor:crosshair");
+
+				$(_container).mousedown(_mousedown);
+				$(_container).mousemove(_mousemove);
+				$(_container).mouseup(_mouseup);
+
+				// Handle the case when the mouse is released outside the canvas.
+				$(document).mouseup(_mouseup);
+				
+				// iPhone Events
+				var agent = navigator.userAgent;
+				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					$(_container).bind("touchstart", _touchstart);
+					$(_container).bind("touchmove", _touchmove);
+					$(_container).bind("touchend", _touchend);
+				}
+			} else {
+				// Reverse the settings above.
+				$(_container).attr("style", "cursor:default");
+				$(_container).unbind("mousedown", _mousedown);
+				$(_container).unbind("mousemove", _mousemove);
+				$(_container).unbind("mouseup", _mouseup);
+				$(document).unbind("mouseup", _mouseup);
+				
+				// iPhone Events
+				var agent = navigator.userAgent;
+				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					$(_container).unbind("touchstart", _touchstart);
+					$(_container).unbind("touchmove", _touchmove);
+					$(_container).unbind("touchend", _touchend);
+				}
+			}
+		}
+		
+		// If input is valid, then sketchpad is for input--listen to events.
+		self.editing($(_input).length > 0);
 	};
 	
 	/**
