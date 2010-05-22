@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.2
+ * Version 0.4
  * Copyright (c) 2010 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
@@ -11,6 +11,21 @@
  *
  * Reference:
  * http://ianli.com/sketchpad/ for Usage
+ * 
+ * Versions:
+ * 0.4 - Support undo/redo of strokes, erase, and clear.
+ *     - Removed input option. To make editors/viewers, set editing option to true/false, respectively.
+ *       To update an input field, listen to change event and update input field with json function.
+ *     - Reduce file size V1. Changed stored path info from array into a string in SVG format.
+ * 0.3 - Added erase, supported initializing data from input field.
+ * 0.2 - Added iPhone/iPod Touch support, onchange event, animate.
+ * 0.1 - Started code.
+ *
+ * TODO:
+ * - Speed up performance.
+ *   - Don't store strokes in two places. _strokes and ActionHistory.current_strokes()
+ *	 - Don't rebuild strokes from history with ActionHistory.current_strokes()
+ * - Reduce file size.
  */
 
 /**
@@ -26,7 +41,8 @@
 		return new SketchPad(paper, options);
 	}
 	
-	Raphael.sketchpad.VERSION = 0.2;
+	// Current version.
+	Raphael.sketchpad.VERSION = 0.4;
 	
 	/**
 	 * The Sketchpad object.
@@ -34,13 +50,22 @@
 	var SketchPad = function(paper, options) {
 		// Use self to reduce confusion about this.
 		var self = this;
-
+		
+		var _options = {
+			width: 100,
+			height: 100,
+			strokes: [],
+			editing: true
+		};
+		jQuery.extend(_options, options);
+		
+		
 		// The Raphael context to draw on.
 		var _paper;
 		if (paper.raphael && paper.raphael.constructor == Raphael.constructor) {
 			_paper = paper;
 		} else if (typeof paper == "string") {
-			_paper = Raphael(paper, options.width || 100, options.height || 100);
+			_paper = Raphael(paper, _options.width, _options.height);
 		} else {
 			throw "first argument must be a Raphael object, an element ID, an array with 3 elements";
 		}
@@ -50,23 +75,10 @@
 
 		// The HTML element that contains the canvas.
 		var _container = $(_canvas).parent();
-		
-		// The input to store SVG data.
-		var _input = options.input;
-		if (_input && _input[0] != "#") {
-			_input = "#" + _input;
-		}
 
 		// The default pen.
 		var _pen = new Pen();
 		
-		// Path data
-		var _strokes = options.strokes;
-		_strokes = (jQuery.isArray(_strokes)) ? _strokes : [];
-		_redraw_strokes();
-		
-		// Paths that were undone.
-		var _undos = [];
 		
 		// Public Methods
 		//-----------------
@@ -88,19 +100,39 @@
 				return _pen;
 			}
 			_pen = value;
-			return self;
+			return self; // function-chaining
 		};
+		
+		// Convert an SVG path into a string, so that it's smaller when JSONified.
+		// This function is used by json().
+		function svg_path_to_string(path) {
+			var str = "";
+			for (var i = 0, n = path.length; i < n; i++) {
+				var point = path[i];
+				str += point[0] + point[1] + "," + point[2];
+			}
+			return str;
+		}
 		
 		self.json = function(value) {
 			if (value === undefined) {
+				for (var i = 0, n = _strokes.length; i < n; i++) {
+					var stroke = _strokes[i];
+					if (typeof stroke.path == "object") {
+						stroke.path = svg_path_to_string(stroke.path);
+					}
+				}
 				return JSON.stringify(_strokes);
 			}
-			function set_strokes(value) {
-				_strokes = value;
-				_redraw_strokes();
-			}
-			eval("set_strokes(" + value + ")");
-			return self;
+			_strokes = JSON.parse(value);
+			
+			_action_history.add({
+				type: "json",
+				strokes: jQuery.merge([], _strokes) // Make a copy.
+			});
+			
+			_redraw_strokes();
+			return self; // function-chaining
 		};
 		
 		self.strokes = function(value) {
@@ -109,45 +141,56 @@
 			}
 			if (jQuery.isArray(_strokes)) {
 				_strokes = value;
+				
+				_action_history.add({
+					type: "strokes",
+					strokes: jQuery.merge([], _strokes) // Make a copy.
+				})
+				
 				_redraw_strokes();
 				_fire_change();
 			}
-			return self;
+			return self; // function-chaining
 		}
 		
 		self.undoable = function() {
-			return _strokes.length > 0;
+			return _action_history.undoable();
 		};
 
 		self.undo = function() {
-			var path = _strokes.pop();
-			if (path) {
-				_undos.push(path);
+			if (_action_history.undoable()) {
+				_action_history.undo();
+				_strokes = _action_history.current_strokes();
 				_redraw_strokes();
 				_fire_change();
 			}
-			return self;
+			return self; // function-chaining
 		};
 
 		self.redoable = function() {
-			return _undos.length > 0;
+			return _action_history.redoable();
 		};
 
 		self.redo = function() {
-			if (_undos.length > 0) {
-				var path = _undos.pop();
-				_strokes.push(path);
+			if (_action_history.redoable()) {
+				_action_history.redo();
+				_strokes = _action_history.current_strokes();
 				_redraw_strokes();
 				_fire_change();
 			}
-			return self;
+			return self; // function-chaining
 		};
 		
 		self.clear = function() {
+			_action_history.add({
+				type: "clear"
+			});
+			
 			_strokes = [];
 			_redraw_strokes();
 			_fire_change();
-			return self;
+			
+			return self; // function-chaining
 		};
 		
 		self.animate = function(ms) {
@@ -163,7 +206,9 @@
 				function animate() {
 					var stroke = _strokes[i];
 					var type = stroke.type;
-					_paper[type]().attr(stroke);
+					_paper[type]()
+						.attr(stroke)
+						.click(_pathclick);
 
 					i++;
 					if (i < _strokes.length) {
@@ -173,6 +218,8 @@
 
 				animate();
 			}
+			
+			return self; // function-chaining
 		};
 		
 		// Change events
@@ -198,12 +245,12 @@
 			_paper.clear();
 			
 			for (var i = 0, n = _strokes.length; i < n; i++) {
-				var p = _strokes[i];
-				var type = p.type;
-				_paper[type]().attr(p);
+				var stroke = _strokes[i];
+				var type = stroke.type;
+				_paper[type]()
+					.attr(stroke)
+					.click(_pathclick);
 			}
-			
-			$(_input).val(JSON.stringify(_strokes));
 		};
 		
 		function _disable_user_select() {
@@ -226,10 +273,31 @@
 		//-----------------
 		// We can only attach events to the container, so do it.
 		
+		function _pathclick(e) {
+			if (_options.editing == "erase") {
+				var stroke = this.attr();
+				stroke.type = this.type;
+				
+				_action_history.add({
+					type: "erase",
+					stroke: stroke
+				});
+				
+				for (var i = 0, n = _strokes.length; i < n; i++) {
+					var s = _strokes[i];
+					if (equiv(s, stroke)) {
+						_strokes.splice(i, 1);
+					}
+				}
+				
+				_fire_change();
+				
+				this.remove();
+			}
+		};
+		
 		function _mousedown(e) {
 			_disable_user_select();
-			
-			_undos = [];
 
 			_pen.start(e, self);
 		};
@@ -244,9 +312,19 @@
 			var path = _pen.finish(e, self);
 			
 			if (path != null) {
-				_strokes.push(path);
+				// Add event when clicked.
+				path.click(_pathclick);
 				
-				$(_input).val(JSON.stringify(_strokes));
+				// Save the stroke.
+				var stroke = path.attr();
+				stroke.type = path.type;
+				
+				_strokes.push(stroke);
+				
+				_action_history.add({
+					type: "stroke",
+					stroke: stroke
+				});
 				
 				_fire_change();
 			}
@@ -279,25 +357,46 @@
 			_mouseup(e);
 		}
 		
-		
 		self.editing = function(mode) {
-			if (mode) {
-				// Cursor is crosshair, so it looks like we can do something.
-				$(_container).attr("style", "cursor:crosshair");
+			if (mode === undefined) {
+				return _options.editing;
+			}
+			
+			_options.editing = mode;
+			if (_options.editing) {
+				if (_options.editing == "erase") {
+					// Cursor is crosshair, so it looks like we can do something.
+					$(_container).css("cursor", "crosshair");
+					$(_container).unbind("mousedown", _mousedown);
+					$(_container).unbind("mousemove", _mousemove);
+					$(_container).unbind("mouseup", _mouseup);
+					$(document).unbind("mouseup", _mouseup);
 
-				$(_container).mousedown(_mousedown);
-				$(_container).mousemove(_mousemove);
-				$(_container).mouseup(_mouseup);
+					// iPhone Events
+					var agent = navigator.userAgent;
+					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+						$(_container).unbind("touchstart", _touchstart);
+						$(_container).unbind("touchmove", _touchmove);
+						$(_container).unbind("touchend", _touchend);
+					}
+				} else {
+					// Cursor is crosshair, so it looks like we can do something.
+					$(_container).css("cursor", "crosshair");
 
-				// Handle the case when the mouse is released outside the canvas.
-				$(document).mouseup(_mouseup);
-				
-				// iPhone Events
-				var agent = navigator.userAgent;
-				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-					$(_container).bind("touchstart", _touchstart);
-					$(_container).bind("touchmove", _touchmove);
-					$(_container).bind("touchend", _touchend);
+					$(_container).mousedown(_mousedown);
+					$(_container).mousemove(_mousemove);
+					$(_container).mouseup(_mouseup);
+
+					// Handle the case when the mouse is released outside the canvas.
+					$(document).mouseup(_mouseup);
+
+					// iPhone Events
+					var agent = navigator.userAgent;
+					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+						$(_container).bind("touchstart", _touchstart);
+						$(_container).bind("touchmove", _touchmove);
+						$(_container).bind("touchend", _touchend);
+					}
 				}
 			} else {
 				// Reverse the settings above.
@@ -315,10 +414,111 @@
 					$(_container).unbind("touchend", _touchend);
 				}
 			}
+			
+			return self; // function-chaining
 		}
 		
-		// If input is valid, then sketchpad is for input--listen to events.
-		self.editing($(_input).length > 0);
+		var _action_history = new ActionHistory();
+		
+		// Path data
+		var _strokes = _options.strokes;
+		if (jQuery.isArray(_strokes) && _strokes.length > 0) {
+			_action_history.add({
+				type: "init",
+				strokes: jQuery.merge([], _strokes)	// Make a clone.
+			});
+			_redraw_strokes();
+		} else {
+			_strokes = [];
+			_redraw_strokes();
+		}
+		
+		self.editing(_options.editing);
+	};
+	
+	var ActionHistory = function() {
+		var self = this;
+		
+		var _history = [];
+		
+		// Index of the last state.
+		var _current_state = -1;
+		
+		// The current set of strokes if strokes were to be rebuilt from history.
+		// Set to null to force refresh.
+		var _current_strokes = null;
+		
+		self.add = function(action) {
+			if (_current_state + 1 < _history.length) {
+				_history.splice(_current_state + 1, _history.length - (_current_state + 1));
+			}
+			
+			_history.push(action);
+			_current_state = _history.length - 1;
+			
+			// Reset current strokes.
+			_current_strokes = null;
+		};
+		
+		self.undoable = function() {
+			return (_current_state > -1);
+		};
+		
+		self.undo = function() {
+			if (self.undoable()) {
+				_current_state--;
+				
+				// Reset current strokes.
+				_current_strokes = null;
+			}
+		};
+		
+		self.redoable = function() {
+			return _current_state < _history.length - 1;
+		};
+		
+		self.redo = function() {
+			if (self.redoable()) {
+				_current_state++;
+				
+				// Reset current strokes.
+				_current_strokes = null;
+			}
+		};
+		
+		// Rebuild the strokes from history.
+		self.current_strokes = function() {
+			if (_current_strokes == null) {
+				var strokes = [];
+				for (var i = 0; i <= _current_state; i++) {
+					var action = _history[i];
+					switch(action.type) {
+						case "init":
+						case "json":
+						case "strokes":
+							jQuery.merge(strokes, action.strokes);
+							break;
+						case "stroke":
+							strokes.push(action.stroke);
+							break;
+						case "erase":
+							for (var s = 0, n = strokes.length; s < n; s++) {
+								var stroke = strokes[s];
+								if (equiv(stroke, action.stroke)) {
+									strokes.splice(s, 1);
+								}
+							}
+							break;
+						case "clear":
+							strokes = [];
+							break;
+					}
+				}
+				
+				_current_strokes = strokes;
+			}
+			return _current_strokes;
+		};
 	};
 	
 	/**
@@ -396,7 +596,22 @@
 		};
 
 		self.finish = function(e, sketchpad) {
-			return self.stop();
+			// return self.stop();
+			var path = null;
+			
+			if (_c != null) {
+				if (_points.length <= 1) {
+					_c.remove();
+				} else {
+					path = _c;
+				}
+			}
+			
+			_drawing = false;
+			_c = null;
+			_points = [];
+			
+			return path;
 		};
 
 		self.move = function(e, sketchpad) {
@@ -406,25 +621,6 @@
 
 				_c.attr({ path: points_to_svg() });
 			}
-		};
-
-		self.stop = function() {
-			var path = null;
-			
-			if (_c != null) {
-				if (_points.length <= 1) {
-					_c.remove();
-				} else {
-					path = _c.attr();
-					path.type = "path";
-				}
-			}
-			
-			_drawing = false;
-			_c = null;
-			_points = [];
-			
-			return path;
 		};
 
 		function points_to_svg() {
@@ -442,7 +638,7 @@
 		};
 	};
 	
-	Pen.MAX_WIDTH = 20;
+	Pen.MAX_WIDTH = 1000;
 	Pen.MIN_WIDTH = 1;
 	
 	/**
@@ -465,3 +661,204 @@ Raphael.fn.display = function(elements) {
 		this[type]().attr(e);
 	}
 };
+
+
+/**
+ * Utility functions to compare objects by Phil Rathe.
+ * http://philrathe.com/projects/equiv
+ */
+
+// Determine what is o.
+function hoozit(o) {
+    if (o.constructor === String) {
+        return "string";
+        
+    } else if (o.constructor === Boolean) {
+        return "boolean";
+
+    } else if (o.constructor === Number) {
+
+        if (isNaN(o)) {
+            return "nan";
+        } else {
+            return "number";
+        }
+
+    } else if (typeof o === "undefined") {
+        return "undefined";
+
+    // consider: typeof null === object
+    } else if (o === null) {
+        return "null";
+
+    // consider: typeof [] === object
+    } else if (o instanceof Array) {
+        return "array";
+    
+    // consider: typeof new Date() === object
+    } else if (o instanceof Date) {
+        return "date";
+
+    // consider: /./ instanceof Object;
+    //           /./ instanceof RegExp;
+    //          typeof /./ === "function"; // => false in IE and Opera,
+    //                                          true in FF and Safari
+    } else if (o instanceof RegExp) {
+        return "regexp";
+
+    } else if (typeof o === "object") {
+        return "object";
+
+    } else if (o instanceof Function) {
+        return "function";
+    } else {
+        return undefined;
+    }
+}
+
+// Call the o related callback with the given arguments.
+function bindCallbacks(o, callbacks, args) {
+    var prop = hoozit(o);
+    if (prop) {
+        if (hoozit(callbacks[prop]) === "function") {
+            return callbacks[prop].apply(callbacks, args);
+        } else {
+            return callbacks[prop]; // or undefined
+        }
+    }
+}
+
+// Test for equality any JavaScript type.
+// Discussions and reference: http://philrathe.com/articles/equiv
+// Test suites: http://philrathe.com/tests/equiv
+// Author: Philippe RathÃ© <prathe@gmail.com>
+
+var equiv = function () {
+
+    var innerEquiv; // the real equiv function
+    var callers = []; // stack to decide between skip/abort functions
+
+    
+    var callbacks = function () {
+
+        // for string, boolean, number and null
+        function useStrictEquality(b, a) {
+            if (b instanceof a.constructor || a instanceof b.constructor) {
+                // to catch short annotaion VS 'new' annotation of a declaration
+                // e.g. var i = 1;
+                //      var j = new Number(1);
+                return a == b;
+            } else {
+                return a === b;
+            }
+        }
+
+        return {
+            "string": useStrictEquality,
+            "boolean": useStrictEquality,
+            "number": useStrictEquality,
+            "null": useStrictEquality,
+            "undefined": useStrictEquality,
+
+            "nan": function (b) {
+                return isNaN(b);
+            },
+
+            "date": function (b, a) {
+                return hoozit(b) === "date" && a.valueOf() === b.valueOf();
+            },
+
+            "regexp": function (b, a) {
+                return hoozit(b) === "regexp" &&
+                    a.source === b.source && // the regex itself
+                    a.global === b.global && // and its modifers (gmi) ...
+                    a.ignoreCase === b.ignoreCase &&
+                    a.multiline === b.multiline;
+            },
+
+            // - skip when the property is a method of an instance (OOP)
+            // - abort otherwise,
+            //   initial === would have catch identical references anyway
+            "function": function () {
+                var caller = callers[callers.length - 1];
+                return caller !== Object &&
+                        typeof caller !== "undefined";
+            },
+
+            "array": function (b, a) {
+                var i;
+                var len;
+
+                // b could be an object literal here
+                if ( ! (hoozit(b) === "array")) {
+                    return false;
+                }
+
+                len = a.length;
+                if (len !== b.length) { // safe and faster
+                    return false;
+                }
+                for (i = 0; i < len; i++) {
+                    if( ! innerEquiv(a[i], b[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+
+            "object": function (b, a) {
+                var i;
+                var eq = true; // unless we can proove it
+                var aProperties = [], bProperties = []; // collection of strings
+
+                // comparing constructors is more strict than using instanceof
+                if ( a.constructor !== b.constructor) {
+                    return false;
+                }
+
+                // stack constructor before traversing properties
+                callers.push(a.constructor);
+
+                for (i in a) { // be strict: don't ensures hasOwnProperty and go deep
+
+                    aProperties.push(i); // collect a's properties
+
+                    if ( ! innerEquiv(a[i], b[i])) {
+                        eq = false;
+                    }
+                }
+
+                callers.pop(); // unstack, we are done
+
+                for (i in b) {
+                    bProperties.push(i); // collect b's properties
+                }
+
+                // Ensures identical properties name
+                return eq && innerEquiv(aProperties.sort(), bProperties.sort());
+            }
+        };
+    }();
+
+    innerEquiv = function () { // can take multiple arguments
+        var args = Array.prototype.slice.apply(arguments);
+        if (args.length < 2) {
+            return true; // end transition
+        }
+
+        return (function (a, b) {
+            if (a === b) {
+                return true; // catch the most you can
+            } else if (a === null || b === null || typeof a === "undefined" || typeof b === "undefined" || hoozit(a) !== hoozit(b)) {
+                return false; // don't lose time with error prone cases
+            } else {
+                return bindCallbacks(a, callbacks, [b, a]);
+            }
+
+        // apply transition with (1..n) arguments
+        })(args[0], args[1]) && arguments.callee.apply(this, args.splice(1, args.length -1));
+    };
+
+    return innerEquiv;
+
+}();
