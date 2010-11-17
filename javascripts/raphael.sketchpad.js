@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.4
+ * Version 0.5
  * Copyright (c) 2010 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
@@ -13,6 +13,7 @@
  * http://ianli.com/sketchpad/ for Usage
  * 
  * Versions:
+ * 0.5 - Added freeze_history. Fixed bug with undoing erase actions.
  * 0.4 - Support undo/redo of strokes, erase, and clear.
  *     - Removed input option. To make editors/viewers, set editing option to true/false, respectively.
  *       To update an input field, listen to change event and update input field with json function.
@@ -26,6 +27,7 @@
  *   - Don't store strokes in two places. _strokes and ActionHistory.current_strokes()
  *	 - Don't rebuild strokes from history with ActionHistory.current_strokes()
  * - Reduce file size.
+ *   X V1. Changed stored path info from array into a string in SVG format.
  */
 
 /**
@@ -42,7 +44,7 @@
 	}
 	
 	// Current version.
-	Raphael.sketchpad.VERSION = 0.4;
+	Raphael.sketchpad.VERSION = 0.5;
 	
 	/**
 	 * The Sketchpad object.
@@ -114,6 +116,26 @@
 			return str;
 		}
 		
+		// Convert a string into an SVG path. This reverses the above code.
+		function string_to_svg_path(str) {
+			var path = [];
+			var tokens = str.split("L");
+			
+			if (tokens.length > 0) {
+				var token = tokens[0].replace("M", "");
+				var points = token.split(",");
+				path.push(["M", parseInt(points[0]), parseInt(points[1])]);
+				
+				for (var i = 1, n = tokens.length; i < n; i++) {
+					token = tokens[i];
+					points = token.split(",");
+					path.push(["L", parseInt(points[0]), parseInt(points[1])]);
+				}
+			}
+			
+			return path;
+		}
+		
 		self.json = function(value) {
 			if (value === undefined) {
 				for (var i = 0, n = _strokes.length; i < n; i++) {
@@ -124,26 +146,26 @@
 				}
 				return JSON.stringify(_strokes);
 			}
-			_strokes = JSON.parse(value);
 			
-			_action_history.add({
-				type: "json",
-				strokes: jQuery.merge([], _strokes) // Make a copy.
-			});
-			
-			_redraw_strokes();
-			return self; // function-chaining
+			return self.strokes(JSON.parse(value));
 		};
 		
 		self.strokes = function(value) {
 			if (value === undefined) {
 				return _strokes;
 			}
-			if (jQuery.isArray(_strokes)) {
+			if (jQuery.isArray(value)) {
 				_strokes = value;
 				
+				for (var i = 0, n = _strokes.length; i < n; i++) {
+					var stroke = _strokes[i];
+					if (typeof stroke.path == "string") {
+						stroke.path = string_to_svg_path(stroke.path);
+					}
+				}
+				
 				_action_history.add({
-					type: "strokes",
+					type: "batch",
 					strokes: jQuery.merge([], _strokes) // Make a copy.
 				})
 				
@@ -152,6 +174,10 @@
 			}
 			return self; // function-chaining
 		}
+		
+		self.freeze_history = function() {
+			_action_history.freeze();
+		};
 		
 		self.undoable = function() {
 			return _action_history.undoable();
@@ -222,6 +248,67 @@
 			return self; // function-chaining
 		};
 		
+		self.editing = function(mode) {
+			if (mode === undefined) {
+				return _options.editing;
+			}
+			
+			_options.editing = mode;
+			if (_options.editing) {
+				if (_options.editing == "erase") {
+					// Cursor is crosshair, so it looks like we can do something.
+					$(_container).css("cursor", "crosshair");
+					$(_container).unbind("mousedown", _mousedown);
+					$(_container).unbind("mousemove", _mousemove);
+					$(_container).unbind("mouseup", _mouseup);
+					$(document).unbind("mouseup", _mouseup);
+
+					// iPhone Events
+					var agent = navigator.userAgent;
+					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+						$(_container).unbind("touchstart", _touchstart);
+						$(_container).unbind("touchmove", _touchmove);
+						$(_container).unbind("touchend", _touchend);
+					}
+				} else {
+					// Cursor is crosshair, so it looks like we can do something.
+					$(_container).css("cursor", "crosshair");
+
+					$(_container).mousedown(_mousedown);
+					$(_container).mousemove(_mousemove);
+					$(_container).mouseup(_mouseup);
+
+					// Handle the case when the mouse is released outside the canvas.
+					$(document).mouseup(_mouseup);
+
+					// iPhone Events
+					var agent = navigator.userAgent;
+					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+						$(_container).bind("touchstart", _touchstart);
+						$(_container).bind("touchmove", _touchmove);
+						$(_container).bind("touchend", _touchend);
+					}
+				}
+			} else {
+				// Reverse the settings above.
+				$(_container).attr("style", "cursor:default");
+				$(_container).unbind("mousedown", _mousedown);
+				$(_container).unbind("mousemove", _mousemove);
+				$(_container).unbind("mouseup", _mouseup);
+				$(document).unbind("mouseup", _mouseup);
+				
+				// iPhone Events
+				var agent = navigator.userAgent;
+				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					$(_container).unbind("touchstart", _touchstart);
+					$(_container).unbind("touchmove", _touchmove);
+					$(_container).unbind("touchend", _touchend);
+				}
+			}
+			
+			return self; // function-chaining
+		}
+		
 		// Change events
 		//----------------
 		
@@ -238,7 +325,7 @@
 			_change_fn();
 		};
 		
-		// Private methods
+		// Miscellaneous methods
 		//------------------
 		
 		function _redraw_strokes() {
@@ -357,66 +444,8 @@
 			_mouseup(e);
 		}
 		
-		self.editing = function(mode) {
-			if (mode === undefined) {
-				return _options.editing;
-			}
-			
-			_options.editing = mode;
-			if (_options.editing) {
-				if (_options.editing == "erase") {
-					// Cursor is crosshair, so it looks like we can do something.
-					$(_container).css("cursor", "crosshair");
-					$(_container).unbind("mousedown", _mousedown);
-					$(_container).unbind("mousemove", _mousemove);
-					$(_container).unbind("mouseup", _mouseup);
-					$(document).unbind("mouseup", _mouseup);
-
-					// iPhone Events
-					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-						$(_container).unbind("touchstart", _touchstart);
-						$(_container).unbind("touchmove", _touchmove);
-						$(_container).unbind("touchend", _touchend);
-					}
-				} else {
-					// Cursor is crosshair, so it looks like we can do something.
-					$(_container).css("cursor", "crosshair");
-
-					$(_container).mousedown(_mousedown);
-					$(_container).mousemove(_mousemove);
-					$(_container).mouseup(_mouseup);
-
-					// Handle the case when the mouse is released outside the canvas.
-					$(document).mouseup(_mouseup);
-
-					// iPhone Events
-					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-						$(_container).bind("touchstart", _touchstart);
-						$(_container).bind("touchmove", _touchmove);
-						$(_container).bind("touchend", _touchend);
-					}
-				}
-			} else {
-				// Reverse the settings above.
-				$(_container).attr("style", "cursor:default");
-				$(_container).unbind("mousedown", _mousedown);
-				$(_container).unbind("mousemove", _mousemove);
-				$(_container).unbind("mouseup", _mouseup);
-				$(document).unbind("mouseup", _mouseup);
-				
-				// iPhone Events
-				var agent = navigator.userAgent;
-				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-					$(_container).unbind("touchstart", _touchstart);
-					$(_container).unbind("touchmove", _touchmove);
-					$(_container).unbind("touchend", _touchend);
-				}
-			}
-			
-			return self; // function-chaining
-		}
+		// Setup
+		//--------
 		
 		var _action_history = new ActionHistory();
 		
@@ -444,6 +473,10 @@
 		// Index of the last state.
 		var _current_state = -1;
 		
+		// Index of the freeze state.
+		// The freeze state is the state where actions cannot be undone.
+		var _freeze_state = -1;
+		
 		// The current set of strokes if strokes were to be rebuilt from history.
 		// Set to null to force refresh.
 		var _current_strokes = null;
@@ -460,8 +493,16 @@
 			_current_strokes = null;
 		};
 		
+		self.freeze = function(index) {
+			if (index === undefined) {
+				_freeze_state = _current_state;
+			} else {
+				_freeze_state = index;
+			}
+		};
+		
 		self.undoable = function() {
-			return (_current_state > -1);
+			return (_current_state > -1 && _current_state > _freeze_state);
 		};
 		
 		self.undo = function() {
@@ -496,6 +537,7 @@
 						case "init":
 						case "json":
 						case "strokes":
+						case "batch":
 							jQuery.merge(strokes, action.strokes);
 							break;
 						case "stroke":
