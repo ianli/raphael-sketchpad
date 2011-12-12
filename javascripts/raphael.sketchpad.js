@@ -1,7 +1,7 @@
 /*
  * Raphael SketchPad
- * Version 0.5
- * Copyright (c) 2010 Ian Li (http://ianli.com)
+ * Version 0.5.1
+ * Copyright (c) 2011 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
  * Requires:
@@ -13,14 +13,16 @@
  * http://ianli.com/sketchpad/ for Usage
  * 
  * Versions:
- * 0.5 - Added freeze_history. Fixed bug with undoing erase actions.
- * 0.4 - Support undo/redo of strokes, erase, and clear.
- *     - Removed input option. To make editors/viewers, set editing option to true/false, respectively.
- *       To update an input field, listen to change event and update input field with json function.
- *     - Reduce file size V1. Changed stored path info from array into a string in SVG format.
- * 0.3 - Added erase, supported initializing data from input field.
- * 0.2 - Added iPhone/iPod Touch support, onchange event, animate.
- * 0.1 - Started code.
+ * 0.5.1 - Fixed extraneous lines when first line is drawn.
+ *         Thanks to http://github.com/peterkeating for the fix!
+ * 0.5.0 - Added freeze_history. Fixed bug with undoing erase actions.
+ * 0.4.0 - Support undo/redo of strokes, erase, and clear.
+ *       - Removed input option. To make editors/viewers, set editing option to true/false, respectively.
+ *         To update an input field, listen to change event and update input field with json function.
+ *       - Reduce file size V1. Changed stored path info from array into a string in SVG format.
+ * 0.3.0 - Added erase, supported initializing data from input field.
+ * 0.2.0 - Added iPhone/iPod Touch support, onchange event, animate.
+ * 0.1.0 - Started code.
  *
  * TODO:
  * - Speed up performance.
@@ -44,7 +46,7 @@
 	}
 	
 	// Current version.
-	Raphael.sketchpad.VERSION = 0.5;
+	Raphael.sketchpad.VERSION = '0.5.1';
 	
 	/**
 	 * The Sketchpad object.
@@ -572,6 +574,7 @@
 		var _color = "#000000";
 		var _opacity = 1.0;
 		var _width = 5;
+		var _offset = null;
 
 		// Drawing state
 		var _drawing = false;
@@ -623,8 +626,11 @@
 		self.start = function(e, sketchpad) {
 			_drawing = true;
 
-			var offset = $(sketchpad.canvas()).offset();			
-			_points.push([e.pageX - offset.left, e.pageY - offset.top]);
+			_offset = $(sketchpad.container()).offset();
+			
+			var x = e.pageX - _offset.left,
+				y = e.pageY - _offset.top;
+			_points.push([x, y]);
 
 			_c = sketchpad.paper().path();
 
@@ -638,7 +644,6 @@
 		};
 
 		self.finish = function(e, sketchpad) {
-			// return self.stop();
 			var path = null;
 			
 			if (_c != null) {
@@ -658,9 +663,9 @@
 
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
-				var offset = $(sketchpad.canvas()).offset();			
-				_points.push([e.pageX - offset.left, e.pageY - offset.top]);
-
+				var x = e.pageX - _offset.left,
+					y = e.pageY - _offset.top;			
+				_points.push([x, y]);
 				_c.attr({ path: points_to_svg() });
 			}
 		};
