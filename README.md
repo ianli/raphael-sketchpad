@@ -1,5 +1,6 @@
-Raphael SketchPad
-Version 0.5.1
+# Raphael SketchPad
+
+## Version 0.5.2
 
 Raphael Sketchpad is a simple drawing editor that you can easily include with your forms.
 It is similar to Mai'Nada.net's InputDraw, but does not require Flash.
