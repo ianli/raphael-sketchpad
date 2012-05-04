@@ -266,12 +266,9 @@
 					$(document).unbind("mouseup", _mouseup);
 
 					// iPhone Events
-					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-						$(_container).unbind("touchstart", _touchstart);
-						$(_container).unbind("touchmove", _touchmove);
-						$(_container).unbind("touchend", _touchend);
-					}
+					$(_container).unbind("touchstart", _touchstart);
+					$(_container).unbind("touchmove", _touchmove);
+					$(_container).unbind("touchend", _touchend);
 				} else {
 					// Cursor is crosshair, so it looks like we can do something.
 					$(_container).css("cursor", "crosshair");
@@ -284,12 +281,9 @@
 					$(document).mouseup(_mouseup);
 
 					// iPhone Events
-					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-						$(_container).bind("touchstart", _touchstart);
-						$(_container).bind("touchmove", _touchmove);
-						$(_container).bind("touchend", _touchend);
-					}
+					$(_container).bind("touchstart", _touchstart);
+					$(_container).bind("touchmove", _touchmove);
+					$(_container).bind("touchend", _touchend);
 				}
 			} else {
 				// Reverse the settings above.
@@ -300,12 +294,9 @@
 				$(document).unbind("mouseup", _mouseup);
 				
 				// iPhone Events
-				var agent = navigator.userAgent;
-				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
-					$(_container).unbind("touchstart", _touchstart);
-					$(_container).unbind("touchmove", _touchmove);
-					$(_container).unbind("touchend", _touchend);
-				}
+				$(_container).unbind("touchstart", _touchstart);
+				$(_container).unbind("touchmove", _touchmove);
+				$(_container).unbind("touchend", _touchend);
 			}
 			
 			return self; // function-chaining
