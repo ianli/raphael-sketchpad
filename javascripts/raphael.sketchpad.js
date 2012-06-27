@@ -581,6 +581,16 @@
 		var _c = null;
 		var _points = [];
 
+		var mapPoint = function (sketchpad, x, y) {
+			var viewBox = sketchpad.paper()._viewBox, scale = 1, _x = x, _y = y;
+			if (viewBox[2] > 0 && viewBox[3] > 0) {
+				scale = sketchpad.canvas().offsetWidth / viewBox[2];
+				_x = ((x / scale) + viewBox[0]) >> 0;
+				_y = ((y / scale) + viewBox[1]) >> 0;
+			}
+			return [_x, _y];
+		}
+
 		self.color = function(value) {
 			if (value === undefined){
 		      	return _color;
@@ -630,7 +640,7 @@
 			
 			var x = e.pageX - _offset.left,
 				y = e.pageY - _offset.top;
-			_points.push([x, y]);
+			_points.push(mapPoint(sketchpad, x, y));
 
 			_c = sketchpad.paper().path();
 
@@ -664,8 +674,11 @@
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
-				_points.push([x, y]);
+					y = e.pageY - _offset.top;
+				if (e.shiftKey && _points.length > 1) {
+					_points.pop();
+				}
+				_points.push(mapPoint(sketchpad, x, y));
 				_c.attr({ path: points_to_svg() });
 			}
 		};
