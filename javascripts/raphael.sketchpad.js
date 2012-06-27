@@ -664,7 +664,10 @@
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
+					y = e.pageY - _offset.top;
+				if (e.shiftKey && _points.length > 1) {
+					_points.pop();
+				}	
 				_points.push([x, y]);
 				_c.attr({ path: points_to_svg() });
 			}
