@@ -82,6 +82,9 @@
 
 		// The default pen.
 		var _pen = new Pen();
+
+		// The scaling ratio of the sketch.
+		var _scaling_ratio = 1;
 		
 		
 		// Public Methods
@@ -106,7 +109,11 @@
 			_pen = value;
 			return self; // function-chaining
 		};
-		
+
+		self.scaling_ratio = function() {
+			return _scaling_ratio;
+		};
+
 		// Convert an SVG path into a string, so that it's smaller when JSONified.
 		// This function is used by json().
 		function svg_path_to_string(path) {
@@ -326,6 +333,20 @@
 		function _fire_change() {
 			_change_fn();
 		};
+
+		// Sketch scaling
+		//----------------
+
+		self.scale = function(width, height) {
+			// set new width and height to paper
+			_paper.setSize(width, height);
+			// scale according to old dimensions
+			_paper.setViewBox(0, 0, _options.width, _options.height, true);
+			// scale stroke width
+			_scaling_ratio = width/_options.width;
+			_redraw_strokes();
+		};
+
 		
 		// Miscellaneous methods
 		//------------------
@@ -336,8 +357,16 @@
 			for (var i = 0, n = _strokes.length; i < n; i++) {
 				var stroke = _strokes[i];
 				var type = stroke.type;
+				// Create a deep copy of strokes if
+				// the sketch is scaled, and alter the
+				// stroke-width property of the copy.
+				var _stroke = stroke;
+				if (_scaling_ratio != 1) {
+					_stroke = jQuery.extend(true, {}, stroke);
+					_stroke["stroke-width"] *= _scaling_ratio;
+				}
 				_paper[type]()
-					.attr(stroke)
+					.attr(_stroke)
 					.click(_pathclick);
 			}
 		};
@@ -627,9 +656,15 @@
 			_drawing = true;
 
 			_offset = $(sketchpad.container()).offset();
-			
+
 			var x = e.pageX - _offset.left,
 				y = e.pageY - _offset.top;
+
+			// fix position for scaled editor
+			var scale = sketchpad.scaling_ratio();
+			x /= scale;
+			y /= scale;
+
 			_points.push([x, y]);
 
 			_c = sketchpad.paper().path();
@@ -637,7 +672,7 @@
 			_c.attr({ 
 				stroke: _color,
 				"stroke-opacity": _opacity,
-				"stroke-width": _width,
+				"stroke-width": _width * scale,
 				"stroke-linecap": "round",
 				"stroke-linejoin": "round"
 			});
@@ -645,26 +680,36 @@
 
 		self.finish = function(e, sketchpad) {
 			var path = null;
-			
+
 			if (_c != null) {
 				if (_points.length <= 1) {
 					_c.remove();
 				} else {
 					path = _c;
+					// fix stroke width; the visible width is
+					// scaled along the editor, but viewers
+					// should render the intended width
+					path.attrs["stroke-width"] = _width;
 				}
 			}
-			
+
 			_drawing = false;
 			_c = null;
 			_points = [];
-			
+
 			return path;
 		};
 
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
+					y = e.pageY - _offset.top;
+
+				// fix position for scaled editor
+				var scale = sketchpad.scaling_ratio();
+				x /= scale;
+				y /= scale;
+
 				_points.push([x, y]);
 				_c.attr({ path: points_to_svg() });
 			}
