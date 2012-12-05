@@ -575,6 +575,8 @@
 		var _opacity = 1.0;
 		var _width = 5;
 		var _offset = null;
+		var _linecap = "round";
+                var _linejoin = "round";
 
 		// Drawing state
 		var _drawing = false;
@@ -623,6 +625,30 @@
 			return self;
 		}
 
+                self.linecap = function(value) {
+                    if (value === undefined) {
+                            return _linecap;
+                    } 
+
+                    if ($.inArray(value, ['butt', 'round', 'square', 'inherit']) != -1) {
+                        _linecap = value;
+                    }
+
+                    return self;
+                }
+
+                self.linejoin = function(value) {
+                    if (value === undefined) {
+                            return _linejoin;
+                    } 
+
+                    if ($.inArray(value, ['miter', 'round', 'bevel', 'inherit']) != -1) {
+                        _linejoin = value;
+                    }
+
+                    return self;
+                };
+
 		self.start = function(e, sketchpad) {
 			_drawing = true;
 
@@ -638,8 +664,8 @@
 				stroke: _color,
 				"stroke-opacity": _opacity,
 				"stroke-width": _width,
-				"stroke-linecap": "round",
-				"stroke-linejoin": "round"
+				"stroke-linecap": _linecap,
+				"stroke-linejoin": _linejoin,
 			});
 		};
 
