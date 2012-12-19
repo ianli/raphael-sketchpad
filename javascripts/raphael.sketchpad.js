@@ -378,10 +378,10 @@
 						_strokes.splice(i, 1);
 					}
 				}
+							
+				this.remove();
 				
 				_fire_change();
-				
-				this.remove();
 			}
 		};
 		
