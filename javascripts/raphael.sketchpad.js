@@ -13,6 +13,7 @@
  * http://ianli.com/sketchpad/ for Usage
  * 
  * Versions:
+ * 0.5.2 - Fixed reference to jQuery, even if jQuery.noConflict is called.
  * 0.5.1 - Fixed extraneous lines when first line is drawn.
  *         Thanks to http://github.com/peterkeating for the fix!
  * 0.5.0 - Added freeze_history. Fixed bug with undoing erase actions.
@@ -36,7 +37,7 @@
  * We use this wrapper to control global variables.
  * The only global variable we expose is Raphael.sketchpad.
  */
-(function(Raphael) {
+(function(Raphael, $) {
 	
 	/**
 	 * Function to create SketchPad object.
@@ -46,7 +47,7 @@
 	}
 	
 	// Current version.
-	Raphael.sketchpad.VERSION = '0.5.1';
+	Raphael.sketchpad.VERSION = '0.5.2';
 	
 	/**
 	 * The Sketchpad object.
@@ -699,7 +700,7 @@
 		return str;
 	}
 	
-})(window.Raphael);
+})(window.Raphael, window.jQuery);
 
 Raphael.fn.display = function(elements) {
 	for (var i = 0, n = elements.length; i < n; i++) {
