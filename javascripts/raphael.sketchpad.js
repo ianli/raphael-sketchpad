@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.5.1
+ * Version 0.5.2
  * Copyright (c) 2011 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
@@ -13,6 +13,7 @@
  * http://ianli.com/sketchpad/ for Usage
  *
  * Versions:
+ * 0.5.2 - Add iPad and Android support.
  * 0.5.1 - Fixed extraneous lines when first line is drawn.
  *         Thanks to http://github.com/peterkeating for the fix!
  * 0.5.0 - Added freeze_history. Fixed bug with undoing erase actions.
@@ -267,7 +268,7 @@
 
 					// iPhone Events
 					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					if (isTouchEnabled()) {
 						$(_container).unbind("touchstart", _touchstart);
 						$(_container).unbind("touchmove", _touchmove);
 						$(_container).unbind("touchend", _touchend);
@@ -285,7 +286,7 @@
 
 					// iPhone Events
 					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					if (isTouchEnabled()) {
 						$(_container).bind("touchstart", _touchstart);
 						$(_container).bind("touchmove", _touchmove);
 						$(_container).bind("touchend", _touchend);
@@ -301,7 +302,7 @@
 
 				// iPhone Events
 				var agent = navigator.userAgent;
-				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+				if (isTouchEnabled()) {
 					$(_container).unbind("touchstart", _touchstart);
 					$(_container).unbind("touchmove", _touchmove);
 					$(_container).unbind("touchend", _touchend);
@@ -709,6 +710,13 @@ Raphael.fn.display = function(elements) {
 	}
 };
 
+function isTouchEnabled() {
+  var agent = navigator.userAgent;
+  return agent.indexOf("iPhone") > 0 ||
+    agent.indexOf("iPod") > 0 ||
+    agent.indexOf("iPad") > 0 ||
+    agent.indexOf("Android") > 0;
+}
 
 /**
  * Utility functions to compare objects by Phil Rathe.
