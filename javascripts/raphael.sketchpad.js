@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.5.1
+ * Version 0.5.2
  * Copyright (c) 2011 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
@@ -11,8 +11,9 @@
  *
  * Reference:
  * http://ianli.com/sketchpad/ for Usage
- * 
+ *
  * Versions:
+ * 0.5.2 - Add iPad and Android support.
  * 0.5.1 - Fixed extraneous lines when first line is drawn.
  *         Thanks to http://github.com/peterkeating for the fix!
  * 0.5.0 - Added freeze_history. Fixed bug with undoing erase actions.
@@ -37,24 +38,24 @@
  * The only global variable we expose is Raphael.sketchpad.
  */
 (function(Raphael) {
-	
+
 	/**
 	 * Function to create SketchPad object.
 	 */
 	Raphael.sketchpad = function(paper, options) {
 		return new SketchPad(paper, options);
 	}
-	
+
 	// Current version.
 	Raphael.sketchpad.VERSION = '0.5.1';
-	
+
 	/**
 	 * The Sketchpad object.
 	 */
 	var SketchPad = function(paper, options) {
 		// Use self to reduce confusion about this.
 		var self = this;
-		
+
 		var _options = {
 			width: 100,
 			height: 100,
@@ -62,8 +63,8 @@
 			editing: true
 		};
 		jQuery.extend(_options, options);
-		
-		
+
+
 		// The Raphael context to draw on.
 		var _paper;
 		if (paper.raphael && paper.raphael.constructor == Raphael.constructor) {
@@ -73,7 +74,7 @@
 		} else {
 			throw "first argument must be a Raphael object, an element ID, an array with 3 elements";
 		}
-		
+
 		// The Raphael SVG canvas.
 		var _canvas = _paper.canvas;
 
@@ -82,23 +83,23 @@
 
 		// The default pen.
 		var _pen = new Pen();
-		
-		
+
+
 		// Public Methods
 		//-----------------
-		
+
 		self.paper = function() {
 			return _paper;
 		};
-		
+
 		self.canvas = function() {
 			return _canvas;
 		};
-		
+
 		self.container = function() {
 			return _container;
 		};
-		
+
 		self.pen = function(value) {
 			if (value === undefined) {
 				return _pen;
@@ -106,7 +107,7 @@
 			_pen = value;
 			return self; // function-chaining
 		};
-		
+
 		// Convert an SVG path into a string, so that it's smaller when JSONified.
 		// This function is used by json().
 		function svg_path_to_string(path) {
@@ -117,27 +118,27 @@
 			}
 			return str;
 		}
-		
+
 		// Convert a string into an SVG path. This reverses the above code.
 		function string_to_svg_path(str) {
 			var path = [];
 			var tokens = str.split("L");
-			
+
 			if (tokens.length > 0) {
 				var token = tokens[0].replace("M", "");
 				var points = token.split(",");
 				path.push(["M", parseInt(points[0]), parseInt(points[1])]);
-				
+
 				for (var i = 1, n = tokens.length; i < n; i++) {
 					token = tokens[i];
 					points = token.split(",");
 					path.push(["L", parseInt(points[0]), parseInt(points[1])]);
 				}
 			}
-			
+
 			return path;
 		}
-		
+
 		self.json = function(value) {
 			if (value === undefined) {
 				for (var i = 0, n = _strokes.length; i < n; i++) {
@@ -148,39 +149,39 @@
 				}
 				return JSON.stringify(_strokes);
 			}
-			
+
 			return self.strokes(JSON.parse(value));
 		};
-		
+
 		self.strokes = function(value) {
 			if (value === undefined) {
 				return _strokes;
 			}
 			if (jQuery.isArray(value)) {
 				_strokes = value;
-				
+
 				for (var i = 0, n = _strokes.length; i < n; i++) {
 					var stroke = _strokes[i];
 					if (typeof stroke.path == "string") {
 						stroke.path = string_to_svg_path(stroke.path);
 					}
 				}
-				
+
 				_action_history.add({
 					type: "batch",
 					strokes: jQuery.merge([], _strokes) // Make a copy.
 				})
-				
+
 				_redraw_strokes();
 				_fire_change();
 			}
 			return self; // function-chaining
 		}
-		
+
 		self.freeze_history = function() {
 			_action_history.freeze();
 		};
-		
+
 		self.undoable = function() {
 			return _action_history.undoable();
 		};
@@ -208,26 +209,26 @@
 			}
 			return self; // function-chaining
 		};
-		
+
 		self.clear = function() {
 			_action_history.add({
 				type: "clear"
 			});
-			
+
 			_strokes = [];
 			_redraw_strokes();
 			_fire_change();
-			
+
 			return self; // function-chaining
 		};
-		
+
 		self.animate = function(ms) {
 			if (ms === undefined) {
 				ms = 500;
 			}
-			
+
 			_paper.clear();
-			
+
 			if (_strokes.length > 0) {
 				var i = 0;
 
@@ -246,15 +247,15 @@
 
 				animate();
 			}
-			
+
 			return self; // function-chaining
 		};
-		
+
 		self.editing = function(mode) {
 			if (mode === undefined) {
 				return _options.editing;
 			}
-			
+
 			_options.editing = mode;
 			if (_options.editing) {
 				if (_options.editing == "erase") {
@@ -267,7 +268,7 @@
 
 					// iPhone Events
 					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					if (isTouchEnabled()) {
 						$(_container).unbind("touchstart", _touchstart);
 						$(_container).unbind("touchmove", _touchmove);
 						$(_container).unbind("touchend", _touchend);
@@ -285,7 +286,7 @@
 
 					// iPhone Events
 					var agent = navigator.userAgent;
-					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+					if (isTouchEnabled()) {
 						$(_container).bind("touchstart", _touchstart);
 						$(_container).bind("touchmove", _touchmove);
 						$(_container).bind("touchend", _touchend);
@@ -298,22 +299,22 @@
 				$(_container).unbind("mousemove", _mousemove);
 				$(_container).unbind("mouseup", _mouseup);
 				$(document).unbind("mouseup", _mouseup);
-				
+
 				// iPhone Events
 				var agent = navigator.userAgent;
-				if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+				if (isTouchEnabled()) {
 					$(_container).unbind("touchstart", _touchstart);
 					$(_container).unbind("touchmove", _touchmove);
 					$(_container).unbind("touchend", _touchend);
 				}
 			}
-			
+
 			return self; // function-chaining
 		}
-		
+
 		// Change events
 		//----------------
-		
+
 		var _change_fn = function() {};
 		self.change = function(fn) {
 			if (fn == null || fn === undefined) {
@@ -322,17 +323,17 @@
 				_change_fn = fn;
 			}
 		};
-		
+
 		function _fire_change() {
 			_change_fn();
 		};
-		
+
 		// Miscellaneous methods
 		//------------------
-		
+
 		function _redraw_strokes() {
 			_paper.clear();
-			
+
 			for (var i = 0, n = _strokes.length; i < n; i++) {
 				var stroke = _strokes[i];
 				var type = stroke.type;
@@ -341,7 +342,7 @@
 					.click(_pathclick);
 			}
 		};
-		
+
 		function _disable_user_select() {
 			$("*").css("-webkit-user-select", "none");
 			$("*").css("-moz-user-select", "none");
@@ -349,7 +350,7 @@
 				$("body").attr("onselectstart", "return false;");
 			}
 		}
-		
+
 		function _enable_user_select() {
 			$("*").css("-webkit-user-select", "text");
 			$("*").css("-moz-user-select", "text");
@@ -357,34 +358,34 @@
 				$("body").removeAttr("onselectstart");
 			}
 		}
-		
+
 		// Event handlers
 		//-----------------
 		// We can only attach events to the container, so do it.
-		
+
 		function _pathclick(e) {
 			if (_options.editing == "erase") {
 				var stroke = this.attr();
 				stroke.type = this.type;
-				
+
 				_action_history.add({
 					type: "erase",
 					stroke: stroke
 				});
-				
+
 				for (var i = 0, n = _strokes.length; i < n; i++) {
 					var s = _strokes[i];
 					if (equiv(s, stroke)) {
 						_strokes.splice(i, 1);
 					}
 				}
-				
+
 				_fire_change();
-				
+
 				this.remove();
 			}
 		};
-		
+
 		function _mousedown(e) {
 			_disable_user_select();
 
@@ -397,28 +398,28 @@
 
 		function _mouseup(e) {
 			_enable_user_select();
-			
+
 			var path = _pen.finish(e, self);
-			
+
 			if (path != null) {
 				// Add event when clicked.
 				path.click(_pathclick);
-				
+
 				// Save the stroke.
 				var stroke = path.attr();
 				stroke.type = path.type;
-				
+
 				_strokes.push(stroke);
-				
+
 				_action_history.add({
 					type: "stroke",
 					stroke: stroke
 				});
-				
+
 				_fire_change();
 			}
 		};
-		
+
 		function _touchstart(e) {
 			e = e.originalEvent;
 			e.preventDefault();
@@ -428,7 +429,7 @@
 				_mousedown(touch);
 			}
 		}
-		
+
 		function _touchmove(e) {
 			e = e.originalEvent;
 			e.preventDefault();
@@ -438,19 +439,19 @@
 				_mousemove(touch);
 			}
 		}
-		
+
 		function _touchend(e) {
 			e = e.originalEvent;
 			e.preventDefault();
 
 			_mouseup(e);
 		}
-		
+
 		// Setup
 		//--------
-		
+
 		var _action_history = new ActionHistory();
-		
+
 		// Path data
 		var _strokes = _options.strokes;
 		if (jQuery.isArray(_strokes) && _strokes.length > 0) {
@@ -463,38 +464,38 @@
 			_strokes = [];
 			_redraw_strokes();
 		}
-		
+
 		self.editing(_options.editing);
 	};
-	
+
 	var ActionHistory = function() {
 		var self = this;
-		
+
 		var _history = [];
-		
+
 		// Index of the last state.
 		var _current_state = -1;
-		
+
 		// Index of the freeze state.
 		// The freeze state is the state where actions cannot be undone.
 		var _freeze_state = -1;
-		
+
 		// The current set of strokes if strokes were to be rebuilt from history.
 		// Set to null to force refresh.
 		var _current_strokes = null;
-		
+
 		self.add = function(action) {
 			if (_current_state + 1 < _history.length) {
 				_history.splice(_current_state + 1, _history.length - (_current_state + 1));
 			}
-			
+
 			_history.push(action);
 			_current_state = _history.length - 1;
-			
+
 			// Reset current strokes.
 			_current_strokes = null;
 		};
-		
+
 		self.freeze = function(index) {
 			if (index === undefined) {
 				_freeze_state = _current_state;
@@ -502,33 +503,33 @@
 				_freeze_state = index;
 			}
 		};
-		
+
 		self.undoable = function() {
 			return (_current_state > -1 && _current_state > _freeze_state);
 		};
-		
+
 		self.undo = function() {
 			if (self.undoable()) {
 				_current_state--;
-				
+
 				// Reset current strokes.
 				_current_strokes = null;
 			}
 		};
-		
+
 		self.redoable = function() {
 			return _current_state < _history.length - 1;
 		};
-		
+
 		self.redo = function() {
 			if (self.redoable()) {
 				_current_state++;
-				
+
 				// Reset current strokes.
 				_current_strokes = null;
 			}
 		};
-		
+
 		// Rebuild the strokes from history.
 		self.current_strokes = function() {
 			if (_current_strokes == null) {
@@ -558,13 +559,13 @@
 							break;
 					}
 				}
-				
+
 				_current_strokes = strokes;
 			}
 			return _current_strokes;
 		};
 	};
-	
+
 	/**
 	 * The default Pen object.
 	 */
@@ -594,7 +595,7 @@
 		self.width = function(value) {
 			if (value === undefined) {
 				return _width;
-			} 
+			}
 
 			if (value < Pen.MIN_WIDTH) {
 				value = Pen.MIN_WIDTH;
@@ -610,7 +611,7 @@
 		self.opacity = function(value) {
 			if (value === undefined) {
 				return _opacity;
-			} 
+			}
 
 			if (value < 0) {
 				value = 0;
@@ -627,14 +628,14 @@
 			_drawing = true;
 
 			_offset = $(sketchpad.container()).offset();
-			
+
 			var x = e.pageX - _offset.left,
 				y = e.pageY - _offset.top;
 			_points.push([x, y]);
 
 			_c = sketchpad.paper().path();
 
-			_c.attr({ 
+			_c.attr({
 				stroke: _color,
 				"stroke-opacity": _opacity,
 				"stroke-width": _width,
@@ -645,7 +646,7 @@
 
 		self.finish = function(e, sketchpad) {
 			var path = null;
-			
+
 			if (_c != null) {
 				if (_points.length <= 1) {
 					_c.remove();
@@ -653,18 +654,18 @@
 					path = _c;
 				}
 			}
-			
+
 			_drawing = false;
 			_c = null;
 			_points = [];
-			
+
 			return path;
 		};
 
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
+					y = e.pageY - _offset.top;
 				_points.push([x, y]);
 				_c.attr({ path: points_to_svg() });
 			}
@@ -676,18 +677,18 @@
 				var path = "M" + p[0] + "," + p[1];
 				for (var i = 1, n = _points.length; i < n; i++) {
 					p = _points[i];
-					path += "L" + p[0] + "," + p[1]; 
-				} 
+					path += "L" + p[0] + "," + p[1];
+				}
 				return path;
 			} else {
 				return "";
 			}
 		};
 	};
-	
+
 	Pen.MAX_WIDTH = 1000;
 	Pen.MIN_WIDTH = 1;
-	
+
 	/**
 	 * Utility to generate string representation of an object.
 	 */
@@ -698,7 +699,7 @@
 		}
 		return str;
 	}
-	
+
 })(window.Raphael);
 
 Raphael.fn.display = function(elements) {
@@ -709,6 +710,13 @@ Raphael.fn.display = function(elements) {
 	}
 };
 
+function isTouchEnabled() {
+  var agent = navigator.userAgent;
+  return agent.indexOf("iPhone") > 0 ||
+    agent.indexOf("iPod") > 0 ||
+    agent.indexOf("iPad") > 0 ||
+    agent.indexOf("Android") > 0;
+}
 
 /**
  * Utility functions to compare objects by Phil Rathe.
@@ -719,7 +727,7 @@ Raphael.fn.display = function(elements) {
 function hoozit(o) {
     if (o.constructor === String) {
         return "string";
-        
+
     } else if (o.constructor === Boolean) {
         return "boolean";
 
@@ -741,7 +749,7 @@ function hoozit(o) {
     // consider: typeof [] === object
     } else if (o instanceof Array) {
         return "array";
-    
+
     // consider: typeof new Date() === object
     } else if (o instanceof Date) {
         return "date";
@@ -785,7 +793,7 @@ var equiv = function () {
     var innerEquiv; // the real equiv function
     var callers = []; // stack to decide between skip/abort functions
 
-    
+
     var callbacks = function () {
 
         // for string, boolean, number and null
