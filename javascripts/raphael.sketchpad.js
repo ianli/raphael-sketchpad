@@ -366,6 +366,7 @@
 			if (_options.editing == "erase") {
 				var stroke = this.attr();
 				stroke.type = this.type;
+				var strokeid = this.id;
 				
 				_action_history.add({
 					type: "erase",
@@ -378,6 +379,9 @@
 						_strokes.splice(i, 1);
 					}
 				}
+				
+				//REMOVE STROKE FROM ARRAY
+				_strokes.splice(stroke_id, 1);
 				
 				_fire_change();
 				
