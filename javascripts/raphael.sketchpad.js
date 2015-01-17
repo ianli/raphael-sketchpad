@@ -172,7 +172,6 @@
 				})
 				
 				_redraw_strokes();
-				_fire_change();
 			}
 			return self; // function-chaining
 		}
