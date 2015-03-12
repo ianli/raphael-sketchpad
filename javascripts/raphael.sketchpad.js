@@ -640,13 +640,11 @@
 		self.finish = function(e, sketchpad) {
 			var path = null;
 
-			if (_drawing == true) {
-				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
-				_points.push([x, y]);
+			if (_points.length == 1){
+				_points.push([_points[0][0], _points[0][1]]);
 				_c.attr({ path: points_to_svg() });
 			}
-			
+
 			if (_c != null) {
 				if (_points.length <= 1) {
 					_c.remove();
