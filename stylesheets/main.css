@@ -1,0 +1,76 @@
+html, body {
+  background:#fff;
+}
+a,
+a:hover,
+a:visited {
+  color:#1D72C2;
+}
+#hd {
+  margin-top:40px;
+}
+  #hd h1 {
+    font-weight:bold;
+    letter-spacing:-0.05em;
+  }
+  #hd a#download {
+    display:block;
+    padding:5px;
+    font-size:24px;
+    font-weight:bold;
+    text-align:center;
+    text-decoration:none;
+    background-color:#D4ECFF;
+    border:1px solid #57B6FF;
+  }
+#bd {
+  margin-bottom:40px;
+}
+  #bd h2,
+  #bd h3 {
+    font-weight:bold;
+    letter-spacing:-0.05em;
+  }
+
+  #bd pre.code {
+    margin-top:0;
+    padding:5px;
+    background-color:#eee;
+  }
+  #bd .sample {
+    float:right;
+    margin-left:10px;
+  }
+  #bd div.widget {
+    background-color:#ffc;
+    border:1px solid #ccc;
+  }
+  /* Reference section */
+  #bd .reference code {
+    margin:0 10px;
+  }
+
+  .widget_actions div {
+    cursor:pointer;
+    margin:4px 0 0;
+    color:#1D72C2;
+    background-color:#D4ECFF;
+    border:1px solid #57B6FF;
+    text-align:center;
+    text-decoration:none;
+  }
+    .widget_actions div.disabled {
+      text-decoration:none;
+      color:#666;
+      background-color:#eee;
+      border:1px solid #ccc;
+    }
+    .widget_actions div.selected {
+      font-weight:bold;
+    }
+    .widget_actions div._title {
+      cursor:default;
+      color:#666;
+      background-color:transparent;
+      border-color:transparent;
+    }
