@@ -1,0 +1,14 @@
+<div class="span-8">
+  <h3>paper</h3>
+  <p>
+    Returns the Raphael paper object.
+  </p>
+</div>
+<div class="span-16 last">
+  {% capture js %}
+// http://raphaeljs.com describes properties of the Raphael paper object.
+var paper = editor.paper();
+{% endcapture %}
+
+  <pre class="code">{{ js | strip | escape }}</pre>
+</div>

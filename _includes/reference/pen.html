@@ -1,0 +1,14 @@
+<div class="clear span-8">
+  <h3>pen</h3>
+  <p>
+    Returns the pen associated with the widget.
+  </p>
+</div>
+<div class="span-16 last">
+  {% capture js %}
+// The pen has various properties that you can set.
+var pen = editor.pen();
+{% endcapture %}
+
+    <pre class="code">{{ js | strip | escape }}</pre>
+</div>

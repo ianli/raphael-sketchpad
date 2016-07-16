@@ -1,0 +1,14 @@
+<div class="clear span-8">
+  <h3>container</h3>
+  <p>
+    Returns the HTML element containing the Raphael paper object.
+  </p>
+</div>
+<div class="span-16 last">
+  {% capture js %}
+// The container is a regular HTML element.
+var container = editor.container();
+{% endcapture %}
+
+  <pre class="code">{{ js | strip | escape }}</pre>
+</div>

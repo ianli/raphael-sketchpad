@@ -1,0 +1,40 @@
+<div class="clear span-8">
+  <div class="sample">
+    <div class="widget" id="change_sample"></div>
+    <p style="text-align:center;">
+      Draw something here.
+    </p>
+  </div>
+  <h3>change</h3>
+  <p>
+    Sets the function that handles the <tt>change</tt> event.
+    <tt>onchange</tt> events happen when
+  </p>
+
+  <h4>Parameters</h4>
+  <ol>
+    <li>fn <code>function</code></li>
+  </ol>
+</div>
+<div class="span-16 last">
+  {% capture js %}
+// When the sketch changes, an alert shows up.
+editor.change(function() {
+  alert("Yay!");
+});
+{% endcapture %}
+    <pre class="code">{{ js | strip | escape }}</pre>
+
+  <script type="text/javascript">
+    $(document).ready(function() {
+      var change_sample = Raphael.sketchpad("change_sample", {
+        width: 100,
+        height: 100,
+        editing: true
+      });
+      change_sample.change(function() {
+        alert("Yay!");
+      });
+    });
+  </script>
+</div>

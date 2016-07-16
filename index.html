@@ -1,0 +1,56 @@
+---
+# Front matter so that Jekyll processes the file
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Raphael SketchPad</title>
+
+  <meta charset="UTF-8"/>
+  <meta http-equiv="content-language" content="en">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <!-- Blueprint CSS -->
+  <link rel="stylesheet" href="stylesheets/cw15gw20cc24/screen.css" type="text/css" media="screen, projection">
+  <link rel="stylesheet" href="stylesheets/cw15gw20cc24/print.css" type="text/css" media="print">
+  <!--[if IE]><link rel="stylesheet" href="stylesheets/cw15gw20cc24/ie.css" type="text/css" media="screen, projection"><![endif]-->
+
+  <link rel="stylesheet" href="stylesheets/main.css">
+
+  <!-- Javascripts -->
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+  <script type="text/javascript" src="javascripts/raphael-2.0.1.js"></script>
+  <script type="text/javascript" src="javascripts/json2.min.js"></script>
+  <script type="text/javascript" src="src/raphael.sketchpad.js"></script>
+</head>
+<body>
+
+<div class="container">
+  {% include header.html %}
+
+  <!--==================== Body ====================-->
+  <div id="bd" class="span-24">
+
+    {% include how-it-works.html %}
+
+    {% include how-to-use-it.html %}
+
+    {% include reference.html %}
+
+    {% include editing.html %}
+
+  </div>
+
+  <!--==================== Footer ====================-->
+  <div id="ft" class="span-24">
+    &copy; 2011 Raphael SketchPad by
+    <a href="http://ianli.com">Ian Li</a>.
+    <a href="http://www.opensource.org/licenses/mit-license.php">Licensed under the MIT license.</a>
+  </div>
+
+</div>
+
+{% include analytics.html %}
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+<h2>How to Use It</h2>
+
+<div class="span-8">
+  <ol>
+    <li>Include necessary javascript library files.</li>
+  </ol>
+</div>
+
+<div class="span-16 last">
+  {% capture html %}
+<script type="text/javascript" src="jquery.min.js"></script>
+<script type="text/javascript" src="raphael.min.js"></script>
+<script type="text/javascript" src="json2.min.js"></script>
+<script type="text/javascript" src="raphael.sketchpad.js"></script>
+{% endcapture %}
+
+  <pre class="code">{{ html | strip | escape }}</pre>
+</div>
+
+<div class="span-8">
+  <ol start="2">
+    <li>
+      To create <b>an editor</b>,
+      put a div with an id where you want the editor.
+      Add a form with a hidden input field with a different id.
+      Set the editing option to <tt>true</tt> (This is the default setting).
+    </li>
+  </ol>
+</div>
+
+<div class="span-16 last">
+      {% capture html %}
+<div id="editor"></div>
+
+<form action="save.php" method="post">
+  <input type="hidden" name="data" />
+  <input type="submit" value="Save" />
+</form>
+
+<script type="text/javascript">
+  var sketchpad = Raphael.sketchpad("editor", {
+    width: 400,
+    height: 400,
+    editing: true
+  });
+
+  // When the sketchpad changes, update the input field.
+  sketchpad.change(function() {
+    $("#data").val(sketchpad.json());
+  });
+</script>
+{% endcapture %}
+
+  <pre class="code">{{ html | strip | escape }}</pre>
+</div>
+
+<div class="span-8">
+  <ol start="3">
+    <li>
+      To create <b>a viewer</b>,
+      put a div with an id where you want the viewer.
+      Set <code>strokes</code> with an array of strokes.
+      Set the editing option to <tt>false</tt>.
+    </li>
+  </ol>
+</div>
+
+<div class="span-16 last">
+  {% capture html %}
+<div id="viewer"></div>
+
+<script type="text/javascript">
+  var strokes = [{
+    type:"path",
+    path:[["M",10,10],["L",390,390]],
+    fill:"none", "stroke":"#000000",
+    stroke-opacity:1,
+    stroke-width:5,
+    stroke-linecap:"round",
+    stroke-linejoin:"round"
+  }];
+  var sketchpad = Raphael.sketchpad("viewer", {
+    width: 400,
+    height: 400,
+    strokes: strokes,
+    editing: false
+  });
+</script>
+{% endcapture %}
+
+  <pre class="code">{{ html | strip | escape }}</pre>
+</div>
+
+<hr class="space" />

@@ -1,0 +1,32 @@
+<div class="clear span-8">
+  <h3>editing</h3>
+  <p>
+    Sets the editing mode of the sketchpad.
+    The sketchpad has to be initialized as an editor.
+    There are three modes:
+  </p>
+  <ul>
+    <li><tt>true</tt> - drawing mode</li>
+    <li><tt>false</tt> - viewer mode</li>
+    <li><tt>erase</tt> - erase mode</li>
+  </ul>
+
+  <h4>Parameters</h4>
+  <ol>
+    <li>mode <code>string</code> or <code>boolean</code></li>
+  </ol>
+</div>
+<div class="span-16 last">
+  {% capture js %}
+// When the sketchpad is in drawing mode.
+editor.editing(true);
+
+// When the sketchpad is in viewer mode.
+editor.editing(false);
+
+// When the sketchpad is in erase mode.
+editor.editing("erase");
+{% endcapture %}
+
+  <pre class="code">{{ js | strip | escape }}</pre>
+</div>
