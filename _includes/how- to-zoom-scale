@@ -1,0 +1,84 @@
+<html>
+<head>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+<script type="text/javascript" src="javascripts/raphael-2.0.1.js"></script>
+<script type="text/javascript" src="javascripts/json2.min.js"></script>
+<script type="text/javascript" src="javascripts/raphael.sketchpad.js"></script>
+</head>
+
+<body>
+
+  <div id="sketchpad_editor"></div>
+      <div id="viewer" style="display:none">
+          <h3>Viewer</h3>
+          <p>
+              <a href="javascript:void(0);" id="update_sketchpad_viewer"></a>
+          </p>
+          <div style="height:650px;" class="widget">
+              <div id="sketchpad_viewer"></div>
+          </div>
+      </div>
+
+
+      <div id="result_div" style="display: none">
+          <h3>Result</h3>
+          <p>
+              The sketch is stored as JSON in an input field.
+          </p>
+          <form action="" method="post" onsubmit="return false;">
+              <textarea id="input1" name="input1"></textarea>
+          </form>
+
+  
+  
+  <script type="text/javascript">
+  <img src="someBackgroundImg.jpg" alt="Smiley face" height="42" width="42">
+  
+    currH = img.height;
+    origH = img.height;
+    currW = img.width;
+    origW = img.width;
+    incW = 20;
+    incH = incW / origW * origH;
+    
+    sketchpad_editor = Raphael.sketchpad("sketchpad_editor", {
+        width: origW,
+        height: origH,
+        editing: true, // true is default
+    });
+    
+  sketchpad_viewer = Raphael.sketchpad("sketchpad_viewer", {
+            width: origW,
+            height: origH,
+            editing: false,
+        });
+
+
+  var _c = sketchpad_editor.canvas(); // attach events to the sketchpad canvas 
+
+            if (_c.addEventListener) {
+                // IE9, Chrome, Safari, Opera
+                _c.addEventListener("mousewheel", MouseWheelHandler, false);
+                // Firefox
+                _c.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+            } else {
+                _c.attachEvent("onmousewheel", MouseWheelHandler); // IE 6/7/
+            }
+
+            function MouseWheelHandler(e) {
+
+                // cross-browser wheel delta
+                var e = window.event || e; // old IE support
+                var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+
+                sketchpad_editor.scale(currW + incW * delta, currH + incH * delta);
+                incH = incW / currW * currH;
+                currW = currW + incW * delta;
+                currH = currH + incH * delta;
+
+                return false;
+            }
+            
+        </script>
+        </body>
+        </html>
