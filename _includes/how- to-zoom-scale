@@ -1,0 +1,117 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <script type="text/javascript" src="js/raphael.js"></script>
+    <script type="text/javascript" src="js/raphael.sketchpad.js"></script>
+</head>
+
+<body>
+    <div class="container">
+
+        <div style="height:500px;" class="widget">
+            <div id="sketchpad_editor"></div>
+
+        </div>
+        <div id="viewer" style="display:none">
+            <h3>Viewer</h3>
+            <p>
+                <a href="javascript:void(0);" id="update_sketchpad_viewer"></a>
+            </p>
+            <div style="height:500px;" class="widget">
+                <div id="sketchpad_viewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result_div" style="display: none">
+        <h3>Result</h3>
+        <p>
+            The sketch is stored as JSON in an input field.
+        </p>
+        <form action="" method="post" onsubmit="return false;">
+            <textarea id="input1" name="input1"></textarea>
+        </form>
+    </div>
+
+        <a id="iconPlus"> <span class="glyphicon glyphicon-zoom-in" style="padding:1px 0px 10px 0px;font-size:30px"></span> </a>
+        <br>
+        <a id="iconMinus"> <span class="glyphicon glyphicon-zoom-out" style="font-size: 30px"></span> </a>
+
+    <img id="img" src="http://www.clipartkid.com/images/265/20-by-20-sectioned-grid-clipart-etc-SVRWIs-clipart.gif" alt="W3Schools.com" style="display: none">
+
+    <script type="text/javascript">
+        strokes = [];
+        img = document.getElementById('img');
+        currH = 500;
+        origH = 500;
+        currW = 600;
+        origW = 600;
+        incW = 20;
+        incH = incW / origW * origH;
+
+        sketchpad_editor = Raphael.sketchpad("sketchpad_editor", {
+            width: origW,
+            height: origH,
+            editing: true, // true is default
+        });
+
+        sketchpad_viewer = Raphael.sketchpad("sketchpad_viewer", {
+            width: origW,
+            height: origH,
+            editing: false,
+        });
+
+        sketchpad_editor.paper().image(img.src, 0, 0, origW, origH).toBack();
+
+        $("#input1").val(sketchpad_editor.json()); //sets the value to input1
+        sketchpad_viewer.json($('#input1').val());
+
+        var _c = sketchpad_editor.canvas(); // attach events to the sketchpad canvas
+
+        if (_c.addEventListener) {
+            // IE9, Chrome, Safari, Opera
+            _c.addEventListener("mousewheel", MouseWheelHandler, false);
+            // Firefox
+            _c.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+        } else {
+            _c.attachEvent("onmousewheel", MouseWheelHandler); // IE 6/7/
+        }
+
+        function MouseWheelHandler(e) {
+
+            // cross-browser wheel delta
+            var e = window.event || e; // old IE support
+            var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+
+            sketchpad_editor.scale(currW + incW * delta, currH + incH * delta);
+            sketchpad_editor.paper().image(img.src, 0, 0, origW, origH).toBack();
+            incH = incW / currW * currH;
+            currW = currW + incW * delta;
+            currH = currH + incH * delta;
+
+            return false;
+        }
+
+        $("#iconPlus").click(function() {
+            sketchpad_editor.scale(currW + incW, currH + incH);
+            sketchpad_editor.paper().image(img.src, 0, 0, origW, origH).toBack();
+            incH = incW / currW * currH;
+            currW = currW + incW;
+            currH = currH + incH;
+        });
+
+        $("#iconMinus").click(function() {
+            sketchpad_editor.scale(currW - incW, currH - incH);
+            sketchpad_editor.paper().image(img.src, 0, 0, origW, origH).toBack();
+            incH = incW / currW * currH;
+            currW = currW - incW;
+            currH = currH - incH;
+        });
+        
+    </script>
+</body>
+
+
+</html>

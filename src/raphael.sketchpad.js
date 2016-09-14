@@ -371,17 +371,28 @@
 					type: "erase",
 					stroke: stroke
 				});
-				
+				    // convert selected svg path to string
+                	function svg_path_to_string(path) {
+                	 var str = "";
+                    	for (var i = 0, n = path.length; i < n; i++) {
+                        	var point = path[i];
+                        	str += point[0] + point[1] + "," + point[2];
+                	 }
+                    	return str;
+                	}
+
+                	stroke_path = svg_path_to_string(stroke.path);
 				for (var i = 0, n = _strokes.length; i < n; i++) {
 					var s = _strokes[i];
-					if (equiv(s, stroke)) {
+					  if (s && s.path && (s.path == stroke_path)) {
 						_strokes.splice(i, 1);
 					}
 				}
+				this.remove();
 				
 				_fire_change();
 				
-				this.remove();
+				
 			}
 		};
 		
@@ -548,7 +559,7 @@
 						case "erase":
 							for (var s = 0, n = strokes.length; s < n; s++) {
 								var stroke = strokes[s];
-								if (equiv(stroke, action.stroke)) {
+								  if (stroke_i && stroke_i.path && (stroke_i.path == action.stroke.path)) {
 									strokes.splice(s, 1);
 								}
 							}
