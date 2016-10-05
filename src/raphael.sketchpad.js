@@ -1,6 +1,6 @@
 /*
  * Raphael SketchPad
- * Version 0.5.1
+ * Version 0.5.2
  * Copyright (c) 2011 Ian Li (http://ianli.com)
  * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php) license.
  *
